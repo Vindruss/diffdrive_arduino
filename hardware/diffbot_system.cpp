@@ -36,8 +36,10 @@ hardware_interface::CallbackReturn DiffDriveArduinoHardware::on_init(
   }
 
 
-  cfg_.left_wheel_name = info_.hardware_parameters["left_wheel_name"];
-  cfg_.right_wheel_name = info_.hardware_parameters["right_wheel_name"];
+  cfg_.front_left_wheel_name = info_.hardware_parameters["front_left_wheel_name"];
+  cfg_.front_right_wheel_name = info_.hardware_parameters["front_right_wheel_name"];
+  cfg_.rear_left_wheel_name = info_.hardware_parameters["rear_left_wheel_name"];
+  cfg_.rear_right_wheel_name = info_.hardware_parameters["rear_right_wheel_name"];
   cfg_.loop_rate = std::stof(info_.hardware_parameters["loop_rate"]);
   cfg_.device = info_.hardware_parameters["device"];
   cfg_.baud_rate = std::stoi(info_.hardware_parameters["baud_rate"]);
@@ -56,8 +58,10 @@ hardware_interface::CallbackReturn DiffDriveArduinoHardware::on_init(
   }
   
 
-  wheel_l_.setup(cfg_.left_wheel_name, cfg_.enc_counts_per_rev);
-  wheel_r_.setup(cfg_.right_wheel_name, cfg_.enc_counts_per_rev);
+  wheel_fl_.setup(cfg_.front_left_wheel_name, cfg_.enc_counts_per_rev);
+  wheel_fr_.setup(cfg_.front_right_wheel_name, cfg_.enc_counts_per_rev);
+  wheel_rl_.setup(cfg_.rear_left_wheel_name, cfg_.enc_counts_per_rev);
+  wheel_rr_.setup(cfg_.rear_right_wheel_name, cfg_.enc_counts_per_rev);
 
 
   for (const hardware_interface::ComponentInfo & joint : info_.joints)
@@ -117,14 +121,24 @@ std::vector<hardware_interface::StateInterface> DiffDriveArduinoHardware::export
   std::vector<hardware_interface::StateInterface> state_interfaces;
 
   state_interfaces.emplace_back(hardware_interface::StateInterface(
-    wheel_l_.name, hardware_interface::HW_IF_POSITION, &wheel_l_.pos));
+    wheel_fl_.name, hardware_interface::HW_IF_POSITION, &wheel_fl_.pos));
   state_interfaces.emplace_back(hardware_interface::StateInterface(
-    wheel_l_.name, hardware_interface::HW_IF_VELOCITY, &wheel_l_.vel));
+    wheel_fl_.name, hardware_interface::HW_IF_VELOCITY, &wheel_fl_.vel));
 
   state_interfaces.emplace_back(hardware_interface::StateInterface(
-    wheel_r_.name, hardware_interface::HW_IF_POSITION, &wheel_r_.pos));
+    wheel_fr_.name, hardware_interface::HW_IF_POSITION, &wheel_fr_.pos));
   state_interfaces.emplace_back(hardware_interface::StateInterface(
-    wheel_r_.name, hardware_interface::HW_IF_VELOCITY, &wheel_r_.vel));
+    wheel_fr_.name, hardware_interface::HW_IF_VELOCITY, &wheel_fr_.vel));
+
+    state_interfaces.emplace_back(hardware_interface::StateInterface(
+    wheel_rl_.name, hardware_interface::HW_IF_POSITION, &wheel_rl_.pos));
+  state_interfaces.emplace_back(hardware_interface::StateInterface(
+    wheel_rl_.name, hardware_interface::HW_IF_VELOCITY, &wheel_rl_.vel));
+
+  state_interfaces.emplace_back(hardware_interface::StateInterface(
+    wheel_rr_.name, hardware_interface::HW_IF_POSITION, &wheel_rr_.pos));
+  state_interfaces.emplace_back(hardware_interface::StateInterface(
+    wheel_rr_.name, hardware_interface::HW_IF_VELOCITY, &wheel_rr_.vel));
 
   return state_interfaces;
 }
@@ -134,10 +148,16 @@ std::vector<hardware_interface::CommandInterface> DiffDriveArduinoHardware::expo
   std::vector<hardware_interface::CommandInterface> command_interfaces;
 
   command_interfaces.emplace_back(hardware_interface::CommandInterface(
-    wheel_l_.name, hardware_interface::HW_IF_VELOCITY, &wheel_l_.cmd));
+    wheel_fl_.name, hardware_interface::HW_IF_VELOCITY, &wheel_fl_.cmd));
 
   command_interfaces.emplace_back(hardware_interface::CommandInterface(
-    wheel_r_.name, hardware_interface::HW_IF_VELOCITY, &wheel_r_.cmd));
+    wheel_fr_.name, hardware_interface::HW_IF_VELOCITY, &wheel_fr_.cmd));
+
+  command_interfaces.emplace_back(hardware_interface::CommandInterface(
+    wheel_rl_.name, hardware_interface::HW_IF_VELOCITY, &wheel_rl_.cmd));
+
+  command_interfaces.emplace_back(hardware_interface::CommandInterface(
+    wheel_rr_.name, hardware_interface::HW_IF_VELOCITY, &wheel_rr_.cmd));
 
   return command_interfaces;
 }
@@ -204,17 +224,25 @@ hardware_interface::return_type DiffDriveArduinoHardware::read(
     return hardware_interface::return_type::ERROR;
   }
 
-  comms_.read_encoder_values(wheel_l_.enc, wheel_r_.enc);
+  comms_.read_encoder_values(wheel_fl_.enc, wheel_fr_.enc, wheel_rl_.enc, wheel_rr_.enc);
 
   double delta_seconds = period.seconds();
 
-  double pos_prev = wheel_l_.pos;
-  wheel_l_.pos = wheel_l_.calc_enc_angle();
-  wheel_l_.vel = (wheel_l_.pos - pos_prev) / delta_seconds;
+  double pos_prev = wheel_fl_.pos;
+  wheel_fl_.pos = wheel_fl_.calc_enc_angle();
+  wheel_fl_.vel = (wheel_fl_.pos - pos_prev) / delta_seconds;
 
-  pos_prev = wheel_r_.pos;
-  wheel_r_.pos = wheel_r_.calc_enc_angle();
-  wheel_r_.vel = (wheel_r_.pos - pos_prev) / delta_seconds;
+  pos_prev = wheel_fr_.pos;
+  wheel_fr_.pos = wheel_fr_.calc_enc_angle();
+  wheel_fr_.vel = (wheel_fr_.pos - pos_prev) / delta_seconds;
+
+  pos_prev = wheel_rl_.pos;
+  wheel_rl_.pos = wheel_rl_.calc_enc_angle();
+  wheel_rl_.vel = (wheel_rl_.pos - pos_prev) / delta_seconds;
+
+  pos_prev = wheel_rr_.pos;
+  wheel_rr_.pos = wheel_rr_.calc_enc_angle();
+  wheel_rr_.vel = (wheel_rr_.pos - pos_prev) / delta_seconds;
 
   return hardware_interface::return_type::OK;
 }
@@ -227,9 +255,11 @@ hardware_interface::return_type diffdrive_arduino ::DiffDriveArduinoHardware::wr
     return hardware_interface::return_type::ERROR;
   }
 
-  int motor_l_counts_per_loop = wheel_l_.cmd / wheel_l_.rads_per_count / cfg_.loop_rate;
-  int motor_r_counts_per_loop = wheel_r_.cmd / wheel_r_.rads_per_count / cfg_.loop_rate;
-  comms_.set_motor_values(motor_l_counts_per_loop, motor_r_counts_per_loop);
+  int motor_fl_counts_per_loop = wheel_fl_.cmd / wheel_fl_.rads_per_count / cfg_.loop_rate;
+  int motor_fr_counts_per_loop = wheel_fr_.cmd / wheel_fr_.rads_per_count / cfg_.loop_rate;
+  int motor_rl_counts_per_loop = wheel_rl_.cmd / wheel_rl_.rads_per_count / cfg_.loop_rate;
+  int motor_rr_counts_per_loop = wheel_rr_.cmd / wheel_rr_.rads_per_count / cfg_.loop_rate;
+  comms_.set_motor_values(motor_fl_counts_per_loop, motor_fr_counts_per_loop, motor_rl_counts_per_loop, motor_rr_counts_per_loop);
   return hardware_interface::return_type::OK;
 }
 
