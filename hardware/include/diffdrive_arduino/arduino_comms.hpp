@@ -102,7 +102,7 @@ public:
     val_3 = std::atoi(token_3.c_str());
     val_4 = std::atoi(token_4.c_str());
     */
-    iss >> fl_val >> fr_val >> rl_val >> rr_val;
+    iss >> val_1 >> val_2 >> val_3 >> val_4;
   }
   void set_motor_values(int val_1, int val_2, int val_3, int val_4)
   {
