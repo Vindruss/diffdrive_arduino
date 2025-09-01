@@ -89,6 +89,7 @@ public:
   {
     std::string response = send_msg("e\r");
     std::istringstream iss(response);
+
 /*
     std::string delimiter = " ";
     size_t del_pos = response.find(delimiter);
@@ -102,7 +103,8 @@ public:
     val_3 = std::atoi(token_3.c_str());
     val_4 = std::atoi(token_4.c_str());
     */
-    iss >> val_1 >> val_2 >> val_3 >> val_4;
+    int temp;
+    iss >> val_1 >> val_2 >> val_3 >> val_4 >> temp;
   }
   void set_motor_values(int val_1, int val_2, int val_3, int val_4)
   {
