@@ -227,19 +227,22 @@ hardware_interface::return_type DiffDriveArduinoHardware::read(
   comms_.read_encoder_values(wheel_fl_.enc, wheel_fr_.enc, wheel_rl_.enc, wheel_rr_.enc);
 
   double delta_seconds = period.seconds();
-
+  wheel_f1_.enc *= -1;
   double pos_prev = wheel_fl_.pos;
   wheel_fl_.pos = wheel_fl_.calc_enc_angle();
   wheel_fl_.vel = (wheel_fl_.pos - pos_prev) / delta_seconds;
 
+  wheel_fr_.enc *= -1;
   pos_prev = wheel_fr_.pos;
   wheel_fr_.pos = wheel_fr_.calc_enc_angle();
   wheel_fr_.vel = (wheel_fr_.pos - pos_prev) / delta_seconds;
 
+  wheel_rl_.enc *= -1;
   pos_prev = wheel_rl_.pos;
   wheel_rl_.pos = wheel_rl_.calc_enc_angle();
   wheel_rl_.vel = (wheel_rl_.pos - pos_prev) / delta_seconds;
 
+  wheel_rr_.enc *= -1;
   pos_prev = wheel_rr_.pos;
   wheel_rr_.pos = wheel_rr_.calc_enc_angle();
   wheel_rr_.vel = (wheel_rr_.pos - pos_prev) / delta_seconds;
@@ -259,6 +262,11 @@ hardware_interface::return_type diffdrive_arduino ::DiffDriveArduinoHardware::wr
   int motor_fr_counts_per_loop = wheel_fr_.cmd / wheel_fr_.rads_per_count / cfg_.loop_rate;
   int motor_rl_counts_per_loop = wheel_rl_.cmd / wheel_rl_.rads_per_count / cfg_.loop_rate;
   int motor_rr_counts_per_loop = wheel_rr_.cmd / wheel_rr_.rads_per_count / cfg_.loop_rate;
+
+motor_fl_counts_per_loop*= -1;
+motor_fr_counts_per_loop*= -1;
+motor_rl_counts_per_loop*= -1;
+motor_rr_counts_per_loop*= -1;
 
 
   comms_.set_motor_values(motor_fl_counts_per_loop, motor_fr_counts_per_loop, motor_rl_counts_per_loop, motor_rr_counts_per_loop);
