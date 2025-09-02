@@ -227,7 +227,7 @@ hardware_interface::return_type DiffDriveArduinoHardware::read(
   comms_.read_encoder_values(wheel_fl_.enc, wheel_fr_.enc, wheel_rl_.enc, wheel_rr_.enc);
 
   double delta_seconds = period.seconds();
-  wheel_f1_.enc *= -1;
+  wheel_fl_.enc *= -1;
   double pos_prev = wheel_fl_.pos;
   wheel_fl_.pos = wheel_fl_.calc_enc_angle();
   wheel_fl_.vel = (wheel_fl_.pos - pos_prev) / delta_seconds;
