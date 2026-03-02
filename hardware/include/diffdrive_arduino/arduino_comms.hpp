@@ -85,7 +85,7 @@ public:
     std::string response = send_msg("\r");
   }
 
-  void read_encoder_values(int &val_1, int &val_2, int &val_3, int &val_4)
+  void read_encoder_values(int &val_1, int &val_2, int &val_3, int &val_4, int &val_5)
   {
     std::string response = send_msg("e\r");
     std::istringstream iss(response);
@@ -104,12 +104,12 @@ public:
     val_4 = std::atoi(token_4.c_str());
     */
     int temp;
-    iss >> val_1 >> val_2 >> val_3 >> val_4 >> temp;
+    iss >> val_1 >> val_2 >> val_3 >> val_4 >> val_5 >> temp;
   }
-  void set_motor_values(int val_1, int val_2, int val_3, int val_4)
+  void set_motor_values(int val_1, int val_2, int val_3, int val_4, int val_5)
   {
     std::stringstream ss;
-    ss << "m " << val_1 << " " << val_2 << " " << val_3 << " " << val_4 <<"\r";
+    ss << "m " << val_1 << " " << val_2 << " " << val_3 << " " << val_4 << val_5 <<"\r";
     send_msg(ss.str());
   }
 

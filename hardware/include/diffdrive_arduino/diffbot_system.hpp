@@ -54,6 +54,11 @@ struct Config
   int pid_d = 0;
   int pid_i = 0;
   int pid_o = 0;
+
+  // NEW: optional linear axis
+  bool enable_linear_axis = false;
+  std::string linear_axis_name = "linear_axis_joint";
+  double linear_axis_units_per_count = 0.0;  // m/count (pro prismatic)
 };
 
 
@@ -103,6 +108,7 @@ private:
   Wheel wheel_fr_;
   Wheel wheel_rl_;
   Wheel wheel_rr_;
+  Wheel wheel_lin_;  // NEW
 };
 
 }  // namespace diffdrive_arduino

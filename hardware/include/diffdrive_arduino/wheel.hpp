@@ -30,6 +30,12 @@ class Wheel
       rads_per_count = (2*M_PI)/counts_per_rev;
     }
 
+    void setup_with_units_per_count(const std::string &joint_name, double units_per_count)
+    {
+      name = joint_name;
+      rads_per_count = units_per_count;
+    }
+
     double calc_enc_angle()
     {
       return enc * rads_per_count;

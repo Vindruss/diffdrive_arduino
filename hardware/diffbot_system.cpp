@@ -56,12 +56,45 @@ hardware_interface::CallbackReturn DiffDriveArduinoHardware::on_init(
   {
     RCLCPP_INFO(rclcpp::get_logger("DiffDriveArduinoHardware"), "PID values not supplied, using defaults.");
   }
+
+  if (info_.hardware_parameters.count("enable_linear_axis") > 0)
+  {
+    const auto & v = info_.hardware_parameters["enable_linear_axis"];
+    cfg_.enable_linear_axis = (v == "true" || v == "True" || v == "1");
+  }
+
+  if (cfg_.enable_linear_axis)
+  {
+    if (info_.hardware_parameters.count("linear_axis_name") == 0 ||
+        info_.hardware_parameters.count("linear_axis_units_per_count") == 0)
+    {
+      RCLCPP_FATAL(rclcpp::get_logger("DiffDriveArduinoHardware"),
+                   "enable_linear_axis=true but missing params: linear_axis_name, linear_axis_units_per_count");
+      return hardware_interface::CallbackReturn::ERROR;
+    }
+
+    cfg_.linear_axis_name = info_.hardware_parameters["linear_axis_name"];
+    cfg_.linear_axis_units_per_count = std::stod(info_.hardware_parameters["linear_axis_units_per_count"]);
+
+    if (cfg_.linear_axis_units_per_count <= 0.0)
+    {
+      RCLCPP_FATAL(rclcpp::get_logger("DiffDriveArduinoHardware"),
+                   "linear_axis_units_per_count must be > 0");
+      return hardware_interface::CallbackReturn::ERROR;
+    }
+  }
   
 
   wheel_fl_.setup(cfg_.front_left_wheel_name, cfg_.enc_counts_per_rev);
   wheel_fr_.setup(cfg_.front_right_wheel_name, cfg_.enc_counts_per_rev);
   wheel_rl_.setup(cfg_.rear_left_wheel_name, cfg_.enc_counts_per_rev);
   wheel_rr_.setup(cfg_.rear_right_wheel_name, cfg_.enc_counts_per_rev);
+
+  // Setup linear axis (m/count typically)
+  if (cfg_.enable_linear_axis)
+  {
+    wheel_lin_.setup_with_units_per_count(cfg_.linear_axis_name, cfg_.linear_axis_units_per_count);
+  }
 
 
   for (const hardware_interface::ComponentInfo & joint : info_.joints)
@@ -140,6 +173,14 @@ std::vector<hardware_interface::StateInterface> DiffDriveArduinoHardware::export
   state_interfaces.emplace_back(hardware_interface::StateInterface(
     wheel_rr_.name, hardware_interface::HW_IF_VELOCITY, &wheel_rr_.vel));
 
+  if (cfg_.enable_linear_axis)
+  {
+    state_interfaces.emplace_back(
+      hardware_interface::StateInterface(wheel_lin_.name, hardware_interface::HW_IF_POSITION, &wheel_lin_.pos));
+    state_interfaces.emplace_back(
+      hardware_interface::StateInterface(wheel_lin_.name, hardware_interface::HW_IF_VELOCITY, &wheel_lin_.vel));
+  }
+
   return state_interfaces;
 }
 
@@ -158,6 +199,12 @@ std::vector<hardware_interface::CommandInterface> DiffDriveArduinoHardware::expo
 
   command_interfaces.emplace_back(hardware_interface::CommandInterface(
     wheel_rr_.name, hardware_interface::HW_IF_VELOCITY, &wheel_rr_.cmd));
+
+  if (cfg_.enable_linear_axis)
+  {
+    command_interfaces.emplace_back(
+      hardware_interface::CommandInterface(wheel_lin_.name, hardware_interface::HW_IF_VELOCITY, &wheel_lin_.cmd));
+  }
 
   return command_interfaces;
 }
@@ -246,6 +293,13 @@ hardware_interface::return_type DiffDriveArduinoHardware::read(
   pos_prev = wheel_rr_.pos;
   wheel_rr_.pos = wheel_rr_.calc_enc_angle();
   wheel_rr_.vel = (wheel_rr_.pos - pos_prev) / delta_seconds;
+
+  if (cfg_.enable_linear_axis)
+  {
+    pos_prev = wheel_lin_.pos;
+    wheel_lin_.pos = wheel_lin_.calc_enc_angle();  // units = meters (typicky)
+    wheel_lin_.vel = (wheel_lin_.pos - pos_prev) / delta_seconds;
+  }
 
   return hardware_interface::return_type::OK;
 }
